@@ -1,243 +1,231 @@
-/* CONFIG */
-const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9b2FKBRe00ngdkBE8bSiC47MDdGJROwM-6FtxRy8htDIev5BZ5Z-SyxAXtz_2KzLxyHn-MiEcJaCj/pub?gid=784473971&single=true&output=csv";
+const SHEET_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9b2FKBRe00ngdkBE8bSiC47MDdGJROwM-6FtxRy8htDIev5BZ5Z-SyxAXtz_2KzLxyHn-MiEcJaCj/pub?gid=784473971&single=true&output=csv";
 const PROXY_URL = "https://corsproxy.io/?" + encodeURIComponent(SHEET_URL);
 
-/* ELEMENTS */
 const fichaContainer = document.getElementById("ficha");
 const fichaSelect = document.getElementById("fichaSelect");
 const treinoSelect = document.getElementById("treinoSelect");
-const statusEl = document.getElementById("status");
 const limparBtn = document.getElementById("limparProgresso");
 
-/* STORAGE HELPERS */
 const saveKey = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 const loadKey = (k) => {
   const raw = localStorage.getItem(k);
   return raw ? JSON.parse(raw) : null;
 };
 
-/* dados carregados */
 let dadosPlanilha = [];
 
-/* UTIL: cria SVG fallback com iniciais do nome do exercício */
-function svgFallback(text, w = 400, h = 300, bg = "#eef2ff", fg = "#0f172a") {
-  const initials = (text || "EX").split(/\s+/).slice(0,2).map(s=>s[0]).join("").toUpperCase();
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'><rect width='100%' height='100%' fill='${bg}'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-size='48' fill='${fg}'>${initials}</text></svg>`;
-  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+function limparTexto(t) {
+  return (t || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "")
+    .trim()
+    .toLowerCase();
 }
 
-/* Carrega a planilha via proxy e normaliza colunas */
 async function carregarFicha() {
   try {
     fichaContainer.innerHTML = "<p>Carregando ficha...</p>";
     const res = await fetch(PROXY_URL);
-    if (!res.ok) throw new Error("HTTP " + res.status);
+    if (!res.ok) throw new Error("Erro HTTP " + res.status);
     const csv = await res.text();
-    const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
-    if (!parsed || !parsed.data || !parsed.data.length) throw new Error("Planilha vazia");
 
-    // normalizar colunas (endereçar variações de nome)
-    dadosPlanilha = parsed.data.map(row => {
-      // busca por chaves parecidas (case-insensitive, trim)
-      const get = (names) => {
-        for (const n of names) {
-          const key = Object.keys(row).find(k => k && k.trim().toLowerCase() === n.toLowerCase());
-          if (key) return (row[key] || "").toString().trim();
-        }
-        return "";
-      };
+    const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
+    if (!parsed.data || parsed.data.length === 0)
+      throw new Error("Planilha vazia");
+
+    const headers = parsed.meta.fields.map((h) => limparTexto(h));
+
+    const idxFicha = headers.findIndex((h) => h.startsWith("ficha"));
+    const idxTreino = headers.findIndex((h) => h.startsWith("treino"));
+    const idxGrupo = headers.findIndex((h) => h.includes("grup"));
+    const idxExercicio = headers.findIndex((h) => h.includes("exer"));
+    const idxSeries = headers.findIndex((h) => h.includes("seri"));
+    const idxReps = headers.findIndex((h) => h.includes("rep"));
+    const idxDescanso = headers.findIndex((h) => h.includes("desc"));
+    const idxExecucao = headers.findIndex((h) => h.includes("exec"));
+    const idxObs = headers.findIndex((h) => h.includes("obs"));
+    const idxCarga = headers.findIndex((h) => h.includes("carga"));
+
+    dadosPlanilha = parsed.data.map((row) => {
+      const values = Object.values(row);
       return {
-        Ficha: get(["Ficha","ficha","Planilha","Sheet"]) || "Padrão",
-        Treino: get(["Treino","treinos","Treino "]) || "Sem treino",
-        Grupo: get(["Grupo","Grupo Muscular","Grupo Muscular "]) || "-",
-        Exercicio: get(["Exercício","Exercicio","Exercício "]) || "-",
-        Series: get(["Séries","Series","Séries "]) || "-",
-        Reps: get(["Reps","Repetições","Repeticoes"]) || "-",
-        Descanso: get(["Descanso (s)","Descanso","Descanso(s)"]) || "",
-        Execucao: get(["Execução / Técnica","Execução / Técnica ","Execução","Execucao"]) || "",
-        Obs: get(["Observações","Observacoes","Obs"]) || "",
-        Carga: get(["Carga (kg)","Carga","Carga (kg) "]) || 0
+        Ficha: values[idxFicha] || "Padrão",
+        Treino: values[idxTreino] || "Sem treino",
+        Grupo: values[idxGrupo] || "-",
+        Exercicio: values[idxExercicio] || "-",
+        Series: values[idxSeries] || "-",
+        Reps: values[idxReps] || "-",
+        Descanso: values[idxDescanso] || "",
+        Execucao: values[idxExecucao] || "",
+        Obs: values[idxObs] || "",
+        Carga: values[idxCarga] || 0,
       };
     });
 
-    // popular select de fichas
-    const fichas = [...new Set(dadosPlanilha.map(d => d.Ficha))];
-    fichaSelect.innerHTML = `<option value="Todos">Todas</option>` + fichas.map(f => `<option value="${f}">${f}</option>`).join("");
+    const fichas = [...new Set(dadosPlanilha.map((r) => r.Ficha).filter(Boolean))];
+    fichaSelect.innerHTML = fichas
+      .map((f) => `<option value="${f}">${f}</option>`)
+      .join("");
 
-    // popular select de treinos (todos inicialmente)
-    const treinos = [...new Set(dadosPlanilha.map(d => d.Treino))];
-    treinoSelect.innerHTML = `<option value="Todos">Todos</option>` + treinos.map(t => `<option value="${t}">${t}</option>`).join("");
+    const treinos = [...new Set(dadosPlanilha.map((r) => r.Treino))];
+    treinoSelect.innerHTML =
+      `<option value="Todos">Todos</option>` +
+      treinos.map((t) => `<option value="${t}">${t}</option>`).join("");
 
-    // eventos
-    fichaSelect.onchange = onFilterChange;
-    treinoSelect.onchange = onFilterChange;
-    limparBtn.onclick = () => {
-      if (confirm("Limpar todo o progresso salvo (cargas e concluídos)?")) {
-        // remove keys criadas por esse app (prefixo FlavinShape_)
-        Object.keys(localStorage).forEach(k => { if (k.startsWith("FlavinShape_")) localStorage.removeItem(k); });
-        renderExercicios([]);
-        aplicarFiltros(); // re-render
-      }
-    };
+    fichaSelect.addEventListener("change", atualizarTreinos);
+    treinoSelect.addEventListener("change", aplicarFiltros);
+    limparBtn.addEventListener("click", limparProgresso);
 
     aplicarFiltros();
   } catch (err) {
-    console.error("Erro ao carregar planilha:", err);
-    fichaContainer.innerHTML = `<p>❌ Erro ao carregar ficha. (${err.message})</p><p>Verifique publicação e republique se necessário.</p>`;
+    console.error(err);
+    fichaContainer.innerHTML = `<p>❌ Erro ao carregar ficha: ${err.message}</p>`;
   }
 }
 
-/* quando qualquer filtro muda: atualizar lista e atualizar treinos disponíveis de acordo com a ficha selecionada */
-function onFilterChange() {
-  // quando trocar ficha, recalcule os treinos disponíveis para essa ficha
-  const ficha = fichaSelect.value;
-  if (ficha !== "Todos") {
-    const treinosNaFicha = [...new Set(dadosPlanilha.filter(r=>r.Ficha===ficha).map(r=>r.Treino))];
-    // repovoa treinoSelect com esses valores + "Todos"
-    treinoSelect.innerHTML = `<option value="Todos">Todos</option>` + treinosNaFicha.map(t => `<option value="${t}">${t}</option>`).join("");
-  } else {
-    // repor todos os treinos
-    const allTreinos = [...new Set(dadosPlanilha.map(r=>r.Treino))];
-    treinoSelect.innerHTML = `<option value="Todos">Todos</option>` + allTreinos.map(t => `<option value="${t}">${t}</option>`).join("");
-  }
+function atualizarTreinos() {
+  const fichaSelecionada = fichaSelect.value;
+  const treinos = [
+    ...new Set(
+      dadosPlanilha
+        .filter((r) => r.Ficha === fichaSelecionada)
+        .map((r) => r.Treino)
+    ),
+  ];
+  treinoSelect.innerHTML =
+    `<option value="Todos">Todos</option>` +
+    treinos.map((t) => `<option value="${t}">${t}</option>`).join("");
   aplicarFiltros();
 }
 
-/* aplica filtros Ficha + Treino e renderiza agrupado por Treino (títulos visíveis) */
 function aplicarFiltros() {
   const ficha = fichaSelect.value;
   const treino = treinoSelect.value;
 
-  let filtered = dadosPlanilha.slice();
-  if (ficha !== "Todos") filtered = filtered.filter(r => r.Ficha === ficha);
-  if (treino !== "Todos") filtered = filtered.filter(r => r.Treino === treino);
+  let filtrados = dadosPlanilha.filter((r) => r.Ficha === ficha);
+  if (treino !== "Todos")
+    filtrados = filtrados.filter((r) => r.Treino === treino);
 
-  renderExercicios(filtered);
+  renderExercicios(filtrados);
 }
 
-/* render agrupado por treino */
 function renderExercicios(lista) {
   fichaContainer.innerHTML = "";
-  if (!lista || !lista.length) {
-    fichaContainer.innerHTML = "<div class='treino-group'><div class='treino-titulo'>Nenhum exercício encontrado</div></div>";
+  if (!lista.length) {
+    fichaContainer.innerHTML = "<p>Nenhum exercício encontrado.</p>";
     return;
   }
 
   const grouped = lista.reduce((acc, ex) => {
-    const key = ex.Treino || "Sem treino";
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(ex);
+    acc[ex.Treino] = acc[ex.Treino] || [];
+    acc[ex.Treino].push(ex);
     return acc;
   }, {});
 
-  Object.entries(grouped).forEach(([treinoNome, items]) => {
-    const group = document.createElement("div");
-    group.className = "treino-group";
-    const titulo = document.createElement("div");
-    titulo.className = "treino-titulo";
-    titulo.textContent = treinoNome;
-    group.appendChild(titulo);
+  for (const [treino, exs] of Object.entries(grouped)) {
+    const groupDiv = document.createElement("div");
+    groupDiv.className = "treino-group";
+    groupDiv.innerHTML = `<div class="treino-titulo">${treino}</div>`;
 
-    items.forEach(item => {
+    for (const ex of exs) {
       const card = document.createElement("div");
       card.className = "exercicio";
+      const id = `FlavinShape_${ex.Ficha}_${ex.Treino}_${ex.Exercicio}`;
+      const progresso = loadKey(id) || {};
 
-      const left = document.createElement("div");
-      left.className = "left";
       const img = document.createElement("img");
-      // tentativa de imagem de banco público (Unsplash Source). Caso falhe, fallback SVG gerado com iniciais
-      const remote = `https://source.unsplash.com/300x200/?gym,${encodeURIComponent(item.Exercicio)}`;
-      img.src = remote;
-      img.alt = item.Exercicio || "exercício";
-      img.onerror = () => { img.src = svgFallback(item.Exercicio, 300, 200); };
-      left.appendChild(img);
+      const fallback = svgFallback(ex.Exercicio);
+      img.src = `https://source.unsplash.com/300x200/?gym,${encodeURIComponent(
+        ex.Exercicio
+      )}`;
+      img.onerror = () => (img.src = fallback);
 
-      const meta = document.createElement("div");
-      meta.className = "meta";
-      meta.innerHTML = `
-        <h3>${item.Exercicio}</h3>
-        <div class="row"><strong>Grupo:</strong> ${item.Grupo}</div>
-        <div class="row"><strong>Séries:</strong> ${item.Series} · <strong>Reps:</strong> ${item.Reps}</div>
-        <div class="row"><strong>Execução:</strong> ${item.Execucao || "-"}</div>
-        <div class="row"><strong>Obs:</strong> ${item.Obs || "-"}</div>
+      card.innerHTML = `
+        <div class="left"></div>
+        <div class="meta">
+          <h3>${ex.Exercicio}</h3>
+          <div class="row"><strong>Grupo:</strong> ${ex.Grupo}</div>
+          <div class="row"><strong>Séries:</strong> ${ex.Series} • <strong>Reps:</strong> ${ex.Reps}</div>
+          <div class="row"><strong>Execução:</strong> ${ex.Execucao}</div>
+          <div class="row"><strong>Obs:</strong> ${ex.Obs}</div>
+        </div>
       `;
 
-      // controle de progresso por item (chave única)
-      const key = `FlavinShape_${item.Ficha}__${item.Treino}__${item.Exercicio}`;
-      const progresso = loadKey(key) || {};
+      card.querySelector(".left").appendChild(img);
 
-      // controles: carga + botões
       const controls = document.createElement("div");
       controls.className = "controls-inline";
 
-      // input carga
       const inputCarga = document.createElement("input");
       inputCarga.type = "number";
-      inputCarga.min = "0";
       inputCarga.className = "input-carga";
-      inputCarga.value = progresso.carga ?? item.Carga ?? 0;
-      inputCarga.onchange = () => {
-        const novo = { ...(loadKey(key) || {}), carga: inputCarga.value };
-        saveKey(key, novo);
-      };
+      inputCarga.value = progresso.carga ?? ex.Carga ?? 0;
+      inputCarga.onchange = () =>
+        saveKey(id, { ...(loadKey(id) || {}), carga: inputCarga.value });
       controls.appendChild(inputCarga);
 
-      // botão concluir
       const btnConcluir = document.createElement("button");
       btnConcluir.className = "btn";
-      const isConcluido = progresso.concluido;
-      if (isConcluido) { card.classList.add("concluido"); btnConcluir.textContent = "✅ Concluído"; }
-      else btnConcluir.textContent = "✔ Concluir";
-
+      const concluido = progresso.concluido;
+      btnConcluir.textContent = concluido ? "✅ Concluído" : "✔ Concluir";
+      if (concluido) card.classList.add("concluido");
       btnConcluir.onclick = () => {
-        const novoEstado = !(loadKey(key)?.concluido);
-        const novo = { ...(loadKey(key) || {}), concluido: novoEstado, carga: inputCarga.value };
-        saveKey(key, novo);
-        if (novoEstado) { card.classList.add("concluido"); btnConcluir.textContent = "✅ Concluído"; }
-        else { card.classList.remove("concluido"); btnConcluir.textContent = "✔ Concluir"; }
+        const novo = !card.classList.contains("concluido");
+        card.classList.toggle("concluido");
+        btnConcluir.textContent = novo ? "✅ Concluído" : "✔ Concluir";
+        saveKey(id, { ...(loadKey(id) || {}), concluido: novo });
       };
       controls.appendChild(btnConcluir);
 
-      // cronômetro (só se houver descanso numérico)
-      const descansoNum = parseInt(item.Descanso);
-      if (!Number.isNaN(descansoNum) && descansoNum > 0) {
+      if (ex.Descanso) {
         const btnTimer = document.createElement("button");
         btnTimer.className = "btn ghost";
-        btnTimer.textContent = `⏱ ${descansoNum}s`;
-        btnTimer.onclick = () => iniciarTimer(descansoNum, btnTimer);
+        btnTimer.textContent = `⏱ ${ex.Descanso}s`;
+        btnTimer.onclick = () => iniciarTimer(ex.Descanso, btnTimer);
         controls.appendChild(btnTimer);
       }
 
-      card.appendChild(left);
-      card.appendChild(meta);
       card.appendChild(controls);
-
-      group.appendChild(card);
-    });
-
-    fichaContainer.appendChild(group);
-  });
+      groupDiv.appendChild(card);
+    }
+    fichaContainer.appendChild(groupDiv);
+  }
 }
 
-/* cronometro simples */
 function iniciarTimer(segundos, botao) {
   let restante = parseInt(segundos);
   botao.disabled = true;
-  const originalText = botao.textContent;
+  const original = botao.textContent;
   botao.textContent = `⏱ ${restante}s`;
   const interval = setInterval(() => {
     restante--;
     botao.textContent = `⏱ ${restante}s`;
-    if (restante <= 0) {
+    if (restante < 0) {
       clearInterval(interval);
       botao.textContent = "✅ Descanso!";
       setTimeout(() => {
         botao.disabled = false;
-        botao.textContent = originalText;
-      }, 1500);
+        botao.textContent = original;
+      }, 2000);
     }
   }, 1000);
 }
 
-/* iniciar */
+function limparProgresso() {
+  if (confirm("Deseja limpar todo o progresso salvo?")) {
+    Object.keys(localStorage).forEach((k) => {
+      if (k.startsWith("FlavinShape_")) localStorage.removeItem(k);
+    });
+    aplicarFiltros();
+  }
+}
+
+function svgFallback(text, w = 300, h = 200) {
+  const initials = (text || "EX").split(/\s+/).slice(0, 2).map((s) => s[0]).join("");
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'><rect width='100%' height='100%' fill='#eef2ff'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='48' fill='#1e3a8a'>${initials}</text></svg>`;
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+}
+
 carregarFicha();
