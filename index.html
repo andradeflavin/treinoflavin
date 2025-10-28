@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlavinShape</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>FlavinShape</h1>
+
+    <div class="selectors">
+      <div>
+        <label for="fichaSelect">Selecionar ficha:</label>
+        <select id="fichaSelect">
+          <option value="Todos">Todas</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="treinoSelect">Filtrar por treino:</label>
+        <select id="treinoSelect">
+          <option value="Todos">Todos</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main id="ficha">
+    <p>Carregando ficha...</p>
+  </main>
+
+  <footer>
+    <p>Feito com 💪 por Flavin | Dados via Google Sheets</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
