@@ -1,39 +1,42 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>FlavinShape</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body>
-  <header>
-    <h1>FlavinShape</h1>
+  <header class="site-header">
+    <div class="brand">
+      <h1>FlavinShape</h1>
+      <p class="tag">Seu treino. Seu shape.</p>
+    </div>
 
-    <div class="selectors">
-      <div>
-        <label for="fichaSelect">Selecionar ficha:</label>
-        <select id="fichaSelect">
-          <option value="Todos">Todas</option>
-        </select>
+    <div class="controls">
+      <div class="control">
+        <label for="fichaSelect">Ficha</label>
+        <select id="fichaSelect"><option value="Todos">Todas</option></select>
       </div>
 
-      <div>
-        <label for="treinoSelect">Filtrar por treino:</label>
-        <select id="treinoSelect">
-          <option value="Todos">Todos</option>
-        </select>
+      <div class="control">
+        <label for="treinoSelect">Treino</label>
+        <select id="treinoSelect"><option value="Todos">Todos</option></select>
+      </div>
+
+      <div class="control small">
+        <button id="limparProgresso" title="Limpar progresso salvo">Limpar progresso</button>
       </div>
     </div>
   </header>
 
-  <main id="ficha">
-    <p>Carregando ficha...</p>
+  <main id="ficha" class="container">
+    <div id="status">Carregando ficha...</div>
   </main>
 
-  <footer>
-    <p>Feito com 💪 por Flavin | Dados via Google Sheets</p>
+  <footer class="site-footer">
+    <small>Feito com 💪 por Flavin • Dados via Google Sheets</small>
   </footer>
 
   <script src="script.js"></script>
