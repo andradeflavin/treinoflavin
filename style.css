@@ -1,0 +1,75 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: Arial, sans-serif;
+  background: #fff;
+  color: #333;
+}
+
+header {
+  background: #2196f3;
+  color: white;
+  text-align: center;
+  padding: 1rem;
+}
+
+.selectors {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+header select {
+  margin-top: 0.3rem;
+  padding: 0.3rem;
+}
+
+main { padding: 1rem; }
+
+.treino-group { margin-bottom: 2rem; }
+
+.treino-titulo {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+  color: #444;
+}
+
+.exercicio {
+  border: 1px solid #ddd;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  background: #fafafa;
+  transition: opacity 0.3s ease;
+}
+
+.exercicio img {
+  max-width: 100px;
+  border-radius: 6px;
+  margin: 0.5rem 0;
+}
+
+.exercicio.concluido {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+button {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #2196f3;
+  border: none;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover { background: #1976d2; }
+
+footer {
+  text-align: center;
+  padding: 1rem;
+  background: #f0f0f0;
+  margin-top: 2rem;
+}
